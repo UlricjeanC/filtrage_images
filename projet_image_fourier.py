@@ -58,47 +58,85 @@ def DFT(f):
 
 
 #%%      
-image = Image.open("C:/Users/lupus/Desktop/images_python/pillow.png")
-
+image = Image.open("C:/Users/lupus/Desktop/images_python/clock.jpg")
 image = image.convert('L')
+Mat_image = np.asarray(image)
+F_image = np.fft.fft2(Mat_image)
 
-Mat = np.asarray(image)
-
-Mat = np.zeros((1000,1000))
-for i in range(1000):
-    for j in range(1000):
-        if (i-500)**2 + (j-500)**2 < 10000 :
+dim = Mat_image.shape
+Mat = np.zeros(dim)
+"""
+for i in range(dim[0]):
+    for j in range(dim[1]):
+        if (i-dim[0]/2)**2 + (j-dim[1]/2)**2 < 100 :
             Mat[i,j] = 1
-
-#F_real, F_imag = DFT(Mat)
-
+"""
+Mat[190:200,110:150] = 1
+#Mat = np.random.normal(0,10,size=dim)
 F = np.fft.fft2(Mat)
-F_inv = np.fft.ifft2(F)
+
+"""
+F_sol = F * F_image
+for i in range(dim[0]):
+    for j in range(dim[1]):
+        if (i-dim[0]/2)**2 + (j-dim[1]/2)**2 < 75000 :
+            F_sol[i,j] = 0
+        else:
+            F_sol[i,j] = F_image[i,j]
+"""
+
+sigma1 = 10
+sigma2 = 5
+lim1 = 2*np.pi*np.sqrt(sigma1)
+lim2 = 2*np.pi*np.sqrt(sigma2)
+lim = max(lim1,lim2)
+X = np.linspace(-lim,lim,dim[0])
+Y = np.linspace(-lim,lim,dim[1])
+
+X = np.tile( X , (dim[1],1) ).T
+Y = np.tile( Y , (dim[0],1) )
+
+theta = np.pi/4 
+A = 1 / ( 2 * np.pi * ( np.sqrt(sigma1) + np.sqrt(sigma2) ) )
+
+a = ((np.cos(theta) ** 2)/(2*sigma1)) + ((np.sin(theta) ** 2)/(2*sigma2))
+b =  -((np.sin(2*theta) ** 2)/(4*sigma1)) + (np.sin(2*theta) ** 2)/(4*sigma2)
+c = ((np.sin(theta) ** 2)/(2*sigma1)) + ((np.cos(theta) ** 2)/(2*sigma2))
+
+Noyau_Gauss = A * np.exp( - ( a*( X*X ) + 2*b*(X*Y) + c*(Y*Y) ) )
+
+
+F_sol = Noyau_Gauss * F_image
+
+
+f_image = np.fft.ifft2(F_image)
+f_sol = np.fft.ifft2(F_sol)
 
 #%%
 
-F_utile = np.log( np.sqrt( (F*F.conjugate()).real ) )
+F_utile = np.log( np.sqrt( (F_sol*F_sol.conjugate()).real ) )
+f_utile = np.sqrt( (f_sol*f_sol.conjugate()).real ) 
+#f_utile = np.sqrt( (f_image*f_image.conjugate()).real ) 
 
-F_utile2 = np.sqrt( (F_inv*F_inv.conjugate()).real ) 
 
-plt.matshow(Mat, cmap = 'binary', interpolation='none')
+
+# images initiales
+plt.matshow(Mat_image, cmap = 'binary', interpolation='none')
 plt.colorbar()
 plt.show()
 
+
+plt.matshow(Noyau_Gauss, cmap = 'plasma', interpolation='none')
+plt.colorbar()
+plt.show()
+
+
+# spectre
 plt.matshow(F_utile, cmap = 'plasma', interpolation='none')
 plt.colorbar()
 plt.show()
 
-plt.matshow(F_utile2, cmap = 'binary', interpolation='none')
+# Image produite
+plt.matshow(f_utile, cmap = 'binary', interpolation='none')
 plt.colorbar()
 plt.show()
-
-
-
-
-
-
-
-
-
-
