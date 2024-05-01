@@ -242,7 +242,8 @@ if __name__ == "__main__":
     print("ok filtre fined tuned")
 
     image_s.show()
-
+    
+    #%% Fourier
     F = np.fft.fft2(g4)
     F_utile = np.log( np.sqrt( (F*F.conjugate()).real ) )
     plt.matshow(F_utile, cmap = 'plasma', interpolation='none')
