@@ -2,15 +2,16 @@
 """
 Created on Sat Apr 27 12:40:52 2024
 
-@author: lupus
+@author: UlricJeanC
 """
 
 from PIL import Image
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def Mat_eps(mu, sigma, dim):
-    return np.random.normal(mu, sigma, size=dim)
+    return np.random.normal(mu, sigma, size=(dim))
 
 def Image_blanks(dim,p):
     dimx, dimy = dim
@@ -105,7 +106,8 @@ def filtre_noyau(f, h, fonc, k=3, param=1):
 
     for i in range(imx):
         for j in range(imy):
-            fp = f[max(i - k, 0) : min(i + k, imx), max(j - k, 0) : min(j + k, imy)]
+            fp = f[max(i - k, 0) : min(i + k, imx), max(j - k, 0) : 
+                   min(j + k, imy)]
             dimfp = fp.shape
             h1 = h(param, dimfp)
 
@@ -126,7 +128,8 @@ def filtre_noyau_bilateral(f, h1, h2, sigma1=3, sigma2=5, k=7):
     for i in range(imx):
         for j in range(imy):
 
-            fp = f[max(i - k, 0) : min(i + k, imx), max(j - k, 0) : min(j + k, imy)]
+            fp = f[max(i - k, 0) : min(i + k, imx), max(j - k, 0) : 
+                   min(j + k, imy)]
             dimfp = fp.shape
             h_1 = h1(param, dimfp)
             h_2 = h2(fp - f[i, j], sigma2)
@@ -147,7 +150,8 @@ def filtre_noyau_median(f, k):
     # kernels usually square with odd number of rows/columns
     for i in range(imx):
         for j in range(imy):
-            M = f[max(i - k, 0) : min(i + k, imx), max(j - k, 0) : min(j + k, imy)]
+            M = f[max(i - k, 0) : min(i + k, imx), max(j - k, 0) : 
+                  min(j + k, imy)]
             g[i, j] = np.median(M)
 
     return g
@@ -212,7 +216,8 @@ if __name__ == "__main__":
     
     g3 = filtre_noyau_median(f, k)
     g3 = filtre_noyau_bilateral(
-        g3, h1, h2, sigma1, sigma2 = 0.005, k=int(np.ceil(2 * np.pi * np.sqrt(sigma1)))
+        g3, h1, h2, sigma1, sigma2 = 0.005, k=int(np.ceil(2 * np.pi * 
+                                                          np.sqrt(sigma1)))
     )
     g3 = normMatImage(g3)
     im_comb = Image.fromarray(g3.astype(np.uint8))
@@ -224,10 +229,12 @@ if __name__ == "__main__":
     g4 = np.where(g2 > 75, g3, g2)
     #g4 = filtre_noyau_median(g4, k=1)
     g4 = filtre_noyau_bilateral(
-        g4, h1, h2, sigma1=6, sigma2=0.1, k=int(np.ceil(2 * np.pi * np.sqrt(sigma1)))
+        g4, h1, h2, sigma1=6, sigma2=0.1, k=int(np.ceil(2 * np.pi * 
+                                                        np.sqrt(sigma1)))
     )
     g4 = filtre_noyau_bilateral(
-        g4, h1, h2, sigma1=10, sigma2=1000, k=int(np.ceil(2 * np.pi * np.sqrt(sigma1)))
+        g4, h1, h2, sigma1=10, sigma2=1000, k=int(np.ceil(2 * np.pi * 
+                                                          np.sqrt(sigma1)))
     )
     g4 = normMatImage(g4)
     im_fineTuned = Image.fromarray(g4.astype(np.uint8))
@@ -235,3 +242,18 @@ if __name__ == "__main__":
     print("ok filtre fined tuned")
 
     image_s.show()
+
+    F = np.fft.fft2(g4)
+    F_utile = np.log( np.sqrt( (F*F.conjugate()).real ) )
+    plt.matshow(F_utile, cmap = 'plasma', interpolation='none')
+    plt.colorbar()
+    plt.show()
+    
+    
+    
+    
+    
+    
+    
+    
+    
