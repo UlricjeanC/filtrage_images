@@ -85,18 +85,20 @@ for i in range(dim[0]):
             F_sol[i,j] = F_image[i,j]
 """
 
-sigma1 = 10
-sigma2 = 5
-lim1 = 2*np.pi*np.sqrt(sigma1)
-lim2 = 2*np.pi*np.sqrt(sigma2)
-lim = max(lim1,lim2)
+sigma1 = 2 
+sigma2 = 2
+#lim1 = 2*np.pi*np.sqrt(sigma1)
+#lim2 = 2*np.pi*np.sqrt(sigma2)
+#lim = max(lim1,lim2) / 2
+lim = 5
+
 X = np.linspace(-lim,lim,dim[0])
 Y = np.linspace(-lim,lim,dim[1])
 
 X = np.tile( X , (dim[1],1) ).T
 Y = np.tile( Y , (dim[0],1) )
 
-theta = np.pi/4 
+theta = np.pi/4 * 0
 A = 1 / ( 2 * np.pi * ( np.sqrt(sigma1) + np.sqrt(sigma2) ) )
 
 a = ((np.cos(theta) ** 2)/(2*sigma1)) + ((np.sin(theta) ** 2)/(2*sigma2))
@@ -140,3 +142,12 @@ plt.show()
 plt.matshow(f_utile, cmap = 'binary', interpolation='none')
 plt.colorbar()
 plt.show()
+
+
+
+
+
+
+
+
+
