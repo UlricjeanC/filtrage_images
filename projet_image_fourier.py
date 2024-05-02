@@ -12,10 +12,10 @@ from matplotlib import cbook, cm
 from matplotlib.colors import LightSource
 
 
-def normMatImage(Mat):
+def normMatImage(Mat,maxVal=255):
     Mat = np.where(Mat > 0, Mat, 0)
     m = np.max(Mat)
-    Mat = (Mat / m) * 255
+    Mat = (Mat / m) * maxVal
     Mat = np.int_(np.ceil(Mat))
     return Mat
 
@@ -26,11 +26,9 @@ def get_concat_h(im1, im2):
     return dst
 
 
-# fonctionne mais inutilisable
-
 MEMO_DFT = {}
 
-def DFT(f):
+def DFT(f): # fonctionne mais inutilisable
     M, N = f.shape
     
     F_real = np.zeros((M,N))
@@ -56,24 +54,51 @@ def DFT(f):
             
     return F_real, F_imag
 
+def Noyau_Gaussien_2D(dim,sigma1,sigma2,lim=10):
+    X = np.linspace(-lim,lim,dim[0])
+    Y = np.linspace(-lim,lim,dim[1])
+
+    X = np.tile( X , (dim[1],1) ).T
+    Y = np.tile( Y , (dim[0],1) )
+
+    theta = np.pi/4 
+    A = 1 / ( 2 * np.pi * ( np.sqrt(sigma1) + np.sqrt(sigma2) ) )
+
+    a = ((np.cos(theta) ** 2)/(2*sigma1)) + ((np.sin(theta) ** 2)/(2*sigma2))
+    b =  -((np.sin(2*theta) ** 2)/(4*sigma1)) + (np.sin(2*theta) ** 2)/(4*sigma2)
+    c = ((np.sin(theta) ** 2)/(2*sigma1)) + ((np.cos(theta) ** 2)/(2*sigma2))
+
+    Noyau_Gauss = A * np.exp( - ( a*( X*X ) + 2*b*(X*Y) + c*(Y*Y) ) )
+
+    return Noyau_Gauss
+
 
 #%%      
 image = Image.open("C:/Users/lupus/Desktop/images_python/clock.jpg")
 image = image.convert('L')
 Mat_image = np.asarray(image)
-F_image = np.fft.fft2(Mat_image)
 
 dim = Mat_image.shape
-Mat = np.zeros(dim)
+
 """
+Mat_image = Mat_image * 0
+for i in range(dim[0]):
+    for j in range(dim[1]):
+        if (i - dim[0]/2)**2 + (j - dim[1]/2)**2 < 1000:
+            Mat_image[i,j] = 1
+"""
+
+
+F_image = np.fft.fft2(Mat_image)
+
+
+"""
+Mat = np.zeros(dim)
 for i in range(dim[0]):
     for j in range(dim[1]):
         if (i-dim[0]/2)**2 + (j-dim[1]/2)**2 < 100 :
             Mat[i,j] = 1
 """
-Mat[190:200,110:150] = 1
-#Mat = np.random.normal(0,10,size=dim)
-F = np.fft.fft2(Mat)
 
 """
 F_sol = F * F_image
@@ -85,67 +110,65 @@ for i in range(dim[0]):
             F_sol[i,j] = F_image[i,j]
 """
 
-sigma1 = 2 
-sigma2 = 2
-#lim1 = 2*np.pi*np.sqrt(sigma1)
-#lim2 = 2*np.pi*np.sqrt(sigma2)
-#lim = max(lim1,lim2) / 2
-lim = 5
+sigma1 = 0.01
+sigma2 = 1
 
-X = np.linspace(-lim,lim,dim[0])
-Y = np.linspace(-lim,lim,dim[1])
+Noyau_Gauss = Noyau_Gaussien_2D(dim,sigma1,sigma2,lim=10)
+F_Gauss = ( np.fft.ifft2(Noyau_Gauss) )
 
-X = np.tile( X , (dim[1],1) ).T
-Y = np.tile( Y , (dim[0],1) )
-
-theta = np.pi/4 * 0
-A = 1 / ( 2 * np.pi * ( np.sqrt(sigma1) + np.sqrt(sigma2) ) )
-
-a = ((np.cos(theta) ** 2)/(2*sigma1)) + ((np.sin(theta) ** 2)/(2*sigma2))
-b =  -((np.sin(2*theta) ** 2)/(4*sigma1)) + (np.sin(2*theta) ** 2)/(4*sigma2)
-c = ((np.sin(theta) ** 2)/(2*sigma1)) + ((np.cos(theta) ** 2)/(2*sigma2))
-
-Noyau_Gauss = A * np.exp( - ( a*( X*X ) + 2*b*(X*Y) + c*(Y*Y) ) )
-
-
-F_sol = Noyau_Gauss * F_image
-
+F_sol = ( F_Gauss * F_image )
 
 f_image = np.fft.ifft2(F_image)
-f_sol = np.fft.ifft2(F_sol)
+f_sol = np.fft.fftshift(np.fft.ifft2(F_sol))
+
+
+Noyau_Fourier = np.log( np.sqrt( (F_Gauss*F_Gauss.conjugate()).real ) )
+F_utile = np.log( np.sqrt( (F_sol*F_sol.conjugate()).real ) )
+f_utile = np.sqrt( (f_sol*f_sol.conjugate()).real )
+#f_utile = np.sqrt( (f_image*f_image.conjugate()).real ) 
 
 #%%
 
-F_utile = np.log( np.sqrt( (F_sol*F_sol.conjugate()).real ) )
-f_utile = np.sqrt( (f_sol*f_sol.conjugate()).real ) 
-#f_utile = np.sqrt( (f_image*f_image.conjugate()).real ) 
-
-
-
-# images initiales
+# image initiale
 plt.matshow(Mat_image, cmap = 'binary', interpolation='none')
 plt.colorbar()
+plt.title("image initiale")
 plt.show()
 
-
+# Noyau
 plt.matshow(Noyau_Gauss, cmap = 'plasma', interpolation='none')
 plt.colorbar()
+plt.title("Noyau")
 plt.show()
 
+"""
+# Noyau Fourier
+plt.matshow(Noyau_Fourier, cmap = 'plasma', interpolation='none')
+plt.colorbar()
+plt.title("Noyau Fourier")
+plt.show()
 
 # spectre
 plt.matshow(F_utile, cmap = 'plasma', interpolation='none')
 plt.colorbar()
+plt.title("spectre")
 plt.show()
+"""
 
 # Image produite
 plt.matshow(f_utile, cmap = 'binary', interpolation='none')
 plt.colorbar()
+plt.title("Image produite")
 plt.show()
 
 
+#%%
 
 
+f_s = normMatImage(f_utile)
+f_s = Image.fromarray(f_s.astype(np.uint8))
+image_s = get_concat_h(image, f_s )
+image_s.show()
 
 
 
