@@ -49,6 +49,24 @@ def get_concat_v(im1, im2):
     dst.paste(im2, (0, im1.height))
     return dst
 
+def Noyau_Gaussien_2D(dim,sigma1,sigma2,lim=10):
+    X = np.linspace(-lim,lim,dim[0])
+    Y = np.linspace(-lim,lim,dim[1])
+
+    X = np.tile( X , (dim[1],1) ).T
+    Y = np.tile( Y , (dim[0],1) )
+
+    theta = np.pi/4 
+    A = 1 / ( 2 * np.pi * ( np.sqrt(sigma1) + np.sqrt(sigma2) ) )
+
+    a = ((np.cos(theta) ** 2)/(2*sigma1)) + ((np.sin(theta) ** 2)/(2*sigma2))
+    b =  -((np.sin(2*theta) ** 2)/(4*sigma1)) + (np.sin(2*theta) ** 2)/(4*sigma2)
+    c = ((np.sin(theta) ** 2)/(2*sigma1)) + ((np.cos(theta) ** 2)/(2*sigma2))
+
+    Noyau_Gauss = A * np.exp( - ( a*( X*X ) + 2*b*(X*Y) + c*(Y*Y) ) )
+
+    return Noyau_Gauss
+
 
 def f_gauss_1D(k, sigma):
     return 1 / np.sqrt(2 * np.pi * sigma) * np.exp(-(k * k) / (2 * sigma))
@@ -156,12 +174,156 @@ def filtre_noyau_median(f, k):
 
     return g
 
+def gradient_dx(f,eps):
+    dim = f.shape
+    mat = np.zeros(dim)
+    
+    centre_x = dim[0]//2
+    centre_y = dim[1]//2
+    
+    mat[centre_x,centre_y] = -1
+    mat[centre_x,(centre_y+1)] = -1
+    mat[(centre_x+1),centre_y] = 1
+    mat[(centre_x+1),(centre_y+1)] = 1
+    mat = mat/(2*eps)
+    
+    F = np.fft.fft2(f)
+    Mat = np.fft.fft2(mat)
+    
+    F = F*Mat
+    
+    f = np.fft.fftshift(np.fft.ifft2(F))
+    return f
+
+def gradient_dy(f,eps):
+    dim = f.shape
+    mat = np.zeros(dim)
+    
+    centre_x = dim[0]//2
+    centre_y = dim[1]//2
+    
+    mat[centre_x,centre_y] = 1
+    mat[centre_x,(centre_y+1)] = -1
+    mat[(centre_x+1),centre_y] = 1
+    mat[(centre_x+1),(centre_y+1)] = -1
+    
+    mat = mat/(2*eps)
+    
+    F = np.fft.fft2(f)
+    Mat = np.fft.fft2(mat)
+    
+    F = F*Mat
+    
+    f = np.fft.fftshift(np.fft.ifft2(F))
+    
+    return f
+
+def Matrice_sobel(k):
+    
+    if k%2 == 0:
+        k += 1
+    
+    centre = k//2 + 1
+    vec1 = np.zeros(k)
+    vec2 = np.zeros(k)
+    
+    c = 1
+    s = 1
+    
+    for i in range(k):
+        if i < (centre-1):
+            vec1[i] = c
+            vec2[i] = s
+            c += 1
+            s += 1
+        elif i > (centre-1):
+            vec1[i] = c
+            vec2[i] = -s
+            c -= 1
+            s -= 1
+        else:
+            vec1[i] = c
+            c -= 1
+            s -= 1
+          
+    vec2 = - vec2
+    Mat = (vec1.reshape(k, 1) @ vec2.reshape(k, 1).T )
+    
+    return Mat
+    
+
+def gradient_sobel_dx(f,eps,k=3):
+    dim = f.shape
+    dimx, dimy = dim
+    
+    mat = Matrice_sobel(k)
+    mat = mat/(2*eps)
+    
+    matx, maty = mat.shape
+    
+    mat = np.block([
+        [ mat , np.zeros(( (matx) , (dimy-maty) )) ],
+        [ np.zeros(( (dimx-matx) , (maty) )) , np.zeros(( (dimx-matx) , (dimy-maty) )) ],
+        ])
+    
+    
+    F = np.fft.fft2(f)
+    Mat = np.fft.fft2(mat)
+    
+    F = F*Mat
+    
+    f = (np.fft.ifft2(F))
+    return f
+
+def gradient_sobel_dy(f,eps,k=3):
+    dim = f.shape
+    dimx, dimy = dim
+    
+    mat = Matrice_sobel(k).T
+    mat = mat/(2*eps)
+    
+    matx, maty = mat.shape
+    
+    mat = np.block([
+        [ mat , np.zeros(( (matx) , (dimy-maty) )) ],
+        [ np.zeros(( (dimx-matx) , (maty) )) , np.zeros(( (dimx-matx) , (dimy-maty) )) ],
+        ])
+    
+    F = np.fft.fft2(f)
+    Mat = np.fft.fft2(mat)
+    
+    F = F*Mat
+    
+    f = (np.fft.ifft2(F))
+    return f
+
+def Laplacien(f,eps):
+    dim = f.shape
+    mat = np.zeros(dim)
+    
+    mat[0,0] = mat[2,0] = mat[0,2] = mat[2,2] = 1
+    mat[1,0] = mat[2,1] = mat[1,2] = mat[0,1] = 4 
+    mat[1,1] = -20
+
+    mat = mat / (6*eps**2)
+    
+    F = np.fft.fft2(f)
+    Mat = np.fft.fft2(mat)
+    
+    F = F*Mat
+    
+    f = (np.fft.ifft2(F))
+    
+    return f
+
 
 if __name__ == "__main__":
     image = Image.open("C:/Users/lupus/Desktop/images_python/clock.jpg")
+    #image = Image.open("C:/Users/lupus/Desktop/images_python/cell.png")
+    r,g,b = image.split()
     image = image.convert("L")
 
-    Mat = np.asarray(image)
+    Mat = np.asarray(r)
     dim = Mat.shape
     mu = 0
     sigma = 15
@@ -169,6 +331,10 @@ if __name__ == "__main__":
     M = Image_blanks(dim,p)
     
     s = (Mat + Mat_eps(mu, sigma, dim)) * M + (1-M) * 255
+    
+    gmat = 255 - np.asarray(g)
+    s = gmat
+    
     s = normMatImage(s)
     
     im = Image.fromarray(s.astype(np.uint8))
@@ -189,6 +355,7 @@ if __name__ == "__main__":
     size = int(np.ceil(2 * np.pi * np.sqrt(sigma)))
     ###############################################################################
 
+    """
     # filtre gaussien
     g = filtre_noyau(f, h, fonc, k=size, param=sigma)
     g = normMatImage(g)
@@ -240,12 +407,88 @@ if __name__ == "__main__":
     im_fineTuned = Image.fromarray(g4.astype(np.uint8))
     image_s = get_concat_h(image_s, im_fineTuned)
     print("ok filtre fined tuned")
+    
+    image_s.show()
+    """
+    
+    f = s ; eps = 2 ; k = 3
+    
+    """
+    f_dx = gradient_dx(f,eps)
+    im_edge_x = Image.fromarray(f_dx.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_edge_x)
+    
+    f_dy = gradient_dy(f,eps)
+    im_edge_y = Image.fromarray(f_dy.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_edge_y)
+    
+    mag_grad = (f_dx + f_dy)
+    im_edge = Image.fromarray(mag_grad.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_edge)
+    
+    """
+    
+    f_sobel_dx = gradient_sobel_dx(f,eps,k)
+    f_sobel_dx = np.sqrt( (f_sobel_dx * f_sobel_dx.conjugate()).real )
+    im_edge_sobel_x = Image.fromarray(f_sobel_dx.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_edge_sobel_x)
+    
+    f_sobel_dy = gradient_sobel_dy(f,eps,k)
+    f_sobel_dy = np.sqrt( (f_sobel_dy * f_sobel_dy.conjugate()).real )
+    im_edge_sobel_y = Image.fromarray(f_sobel_dy.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_edge_sobel_y)
+    
+    
+    mag_grad = f_sobel_dy + f_sobel_dx
+    im_edge = Image.fromarray(mag_grad.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_edge)
+    
+    mag_grad = np.where(mag_grad > 50 , 255 , 0)
+    im_edge = Image.fromarray(mag_grad.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_edge)
+    
+    ###########
+    
+    eps = 2 ; f = s ; dim = f.shape ; sigma1 = sigma2 = 0.005
+    Noyau_gauss = Noyau_Gaussien_2D(dim,sigma1,sigma2,lim=10)
+    
+    """
+    plt.matshow(Noyau_gauss, cmap = 'plasma', interpolation='none')
+    plt.colorbar()
+    plt.title("Noyau")
+    plt.show()
+    """
+    
+    '''
+    F_lisse = np.fft.ifft2(Noyau_gauss) * np.fft.ifft2(f)
+    f_lisse = np.fft.fftshift(np.fft.ifft2(F_lisse)).T
+    f_lisse = np.sqrt( (f_lisse * f_lisse.conjugate()).real )
+    '''
+    
+    """
+    plt.matshow(f_lisse, cmap = 'binary', interpolation='none')
+    plt.colorbar()
+    plt.title("image")
+    plt.show()
+    """
 
+    f_laplace = Laplacien(f,eps)
+    fsss = f_laplace.real
+    f_laplace = fsss
+    f_laplace = np.sqrt( (f_laplace * f_laplace.conjugate() ).real )
+    f_laplace = normMatImage(f_laplace)
+    #f_laplace = np.where(f_laplace > 10, 255, 0)
+    im_laplace = Image.fromarray(f_laplace.astype(np.uint8))
+    image_s = get_concat_h(image_s, im_laplace)
+    
+    
     image_s.show()
     
-    #%% Fourier
-    F = np.fft.fft2(g4)
-    F_utile = np.log( np.sqrt( (F*F.conjugate()).real ) )
-    plt.matshow(F_utile, cmap = 'plasma', interpolation='none')
-    plt.colorbar()
-    plt.show()
+    
+    
+    
+    
+    
+    
+    
+    
