@@ -2,13 +2,12 @@
 """
 Created on Thu Sep 19 18:37:23 2024
 
-@author: lupus
+@author: Ulricjean
 """
 
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 import matplotlib.animation as animation
 
 def get_concat_h(im1, im2):
@@ -74,10 +73,11 @@ for t in temp:
     h = ker[np.argsort(ker)[np.argsort(np.argsort(f.flatten()))]].reshape(n,m)
     snapshots.append(255-h)
 
+snapshots = snapshots + snapshots[::-1] 
 
 fig = plt.figure( figsize=(8,8) )
 
-fps = 5
+fps = 10
 nSeconds = 5
 a = snapshots[0]
 im = plt.imshow(a, cmap='Greys')
@@ -85,9 +85,6 @@ im.axes.get_xaxis().set_visible(False)
 im.axes.get_yaxis().set_visible(False)
 
 def animate_func(i):
-    if i % fps == 0:
-        print( '.', end ='' )
-
     im.set_array(snapshots[i])
     return [im]
 
